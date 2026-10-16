@@ -1,0 +1,13 @@
+name: ds_python310_env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - numpy
+  - pandas
+  - scikit-learn
+  - h5py
+  - matplotlib
+  - pillow
+  - umap-learn
+  - joblib
