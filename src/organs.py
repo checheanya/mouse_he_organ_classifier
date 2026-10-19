@@ -1,13 +1,13 @@
 """Organ names, colors, and the cohorts used to build the training set.
 
 Colors match the organ overlays already used for these slides. Spleen and
-pancreas stay in the palette so a later run uses the same colors, and they
-are left out of training until that curation is finished.
+pancreas use the v3 contours from the eGPS survey, plus the Warren October
+slides whose cassette is that organ.
 """
 
 from __future__ import annotations
 
-PENDING_ORGANS = ("Spleen", "Pancreas")
+PENDING_ORGANS: tuple[str, ...] = ()
 
 # Single-organ slides. The organ name is the cassette or the sample sheet,
 # and the Trident H5 is the unrefined tissue segmentation. Multi-organ slides

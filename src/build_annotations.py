@@ -3,9 +3,15 @@
 
 Single-organ slides contribute one row per slide. The trainer then mean-pools
 each contour on that slide and labels every piece with the slide organ.
+Those slides have one segmentation; none of them has a v2 or v3 contour.
+
 The ten manually labeled Warren slides contribute one row per labeled piece.
-Spleen and pancreas are omitted. Extra rows in ``data/extra_annotations.csv``
-are appended as they are, which is how those two organs can be added later.
+Those ten slides were not redrawn in v2 or v3.
+
+eGPS survey spleen and pancreas contribute the v3 contours. The H5 is the
+patches inside that contour, before the tissue-color cut, and the geojson is
+the opened v3 outline. Extra rows in ``data/extra_annotations.csv`` are appended
+as they are.
 """
 
 from __future__ import annotations
@@ -25,6 +31,8 @@ MANUAL = Path("/data/labs/sinha_lab/anamikay/uw_slide_tissue_numbers.csv")
 PIECE_DIR = Path(
     "/data/labs/sinha_lab/achechenina/embeddings_uni/warren_slam/features_uni_official"
 )
+JAX_ROOT = Path("/data/labs/sinha_lab/achechenina/embeddings_uni/jax_kidneys")
+JAX_META = Path("/data/labs/sinha_lab/achechenina/data/261013_jax_kidney_known_age_meta.csv")
 EXTRA = ROOT / "data" / "extra_annotations.csv"
 
 COLUMNS = [
@@ -89,6 +97,30 @@ def manual_rows() -> pd.DataFrame:
     return pd.DataFrame(records, columns=COLUMNS)
 
 
+def v3_spleen_pancreas_rows() -> pd.DataFrame:
+    """eGPS survey pieces whose outline is the v3 call, including opened fusions."""
+    meta = pd.read_csv(JAX_META)
+    mouse = dict(zip(meta["slide_name"].astype(str), meta["sample_id"].astype(str)))
+    slide_ids = dict(zip(meta["slide_name"].astype(str), meta["slide_id"].astype(str)))
+    records = []
+    for organ, folder in (("Spleen", "spleen"), ("Pancreas", "pancreas")):
+        piece_dir = JAX_ROOT / f"{folder}_pieces_uni_v1"
+        geo_dir = JAX_ROOT / f"{folder}_refined" / "contours"
+        for feature in sorted(piece_dir.glob("*.h5")):
+            geo = geo_dir / f"{feature.stem}.geojson"
+            records.append({
+                "slide_id": slide_ids.get(feature.stem, feature.stem),
+                "mouse_id": mouse.get(feature.stem, feature.stem),
+                "cohort": "eGPS",
+                "organ": organ,
+                "feature_h5": str(feature),
+                "contour_geojson": str(geo) if geo.is_file() else "",
+                "piece_id": "",
+                "source": "v3_contour",
+            })
+    return pd.DataFrame(records, columns=COLUMNS)
+
+
 def extra_rows(path: Path) -> pd.DataFrame:
     if not path.is_file():
         return pd.DataFrame(columns=COLUMNS)
@@ -111,7 +143,7 @@ def main() -> None:
     args = parser.parse_args()
 
     master = pd.read_csv(args.master)
-    parts = [single_organ_rows(master), manual_rows(), extra_rows(args.extra)]
+    parts = [single_organ_rows(master), manual_rows(), v3_spleen_pancreas_rows(), extra_rows(args.extra)]
     table = pd.concat(parts, ignore_index=True)
     table = table.drop_duplicates(["feature_h5", "piece_id", "organ"])
     args.out.parent.mkdir(parents=True, exist_ok=True)

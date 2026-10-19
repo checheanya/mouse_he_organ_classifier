@@ -4,7 +4,7 @@ A logistic regression on the mean UNI v1 embedding of one tissue piece. It is th
 
 The vector is the mean of the L2-normalized UNI v1 patch embeddings inside the tissue contour. This is the unrefined segmentation. The later tissue-color cut used by the slide clocks is not applied. If a slide has several tissues, each contour is classified on its own.
 
-Spleen and pancreas are not in the current model. Their calls are still being curated. The colors and the extra-annotation file are already set up for them.
+Spleen and pancreas are in the model. On the eGPS survey they use the v3 contours, including the pieces that were opened where two organs had been fused. Warren October spleen and pancreas slides use the original contour, because those slides were not redrawn.
 
 Tissues with large artefacts or lesions, including a big tumor region, can be assigned to the wrong organ.
 
@@ -18,11 +18,14 @@ Single-organ slides, where the cassette or the sample sheet names the organ, plu
 | --- | --- |
 | Adams, Shabnam | Liver |
 | Kirkland | Brain, Gut, Kidney, Liver, Lung |
-| Warren October | Adrenal, Brain, Heart, Kidney, Liver, Lung, Muscle, Prostate, Skin, Testis |
+| Warren October | Adrenal, Brain, Heart, Kidney, Liver, Lung, Muscle, Pancreas, Prostate, Skin, Spleen, Testis |
 | JAX NSC | Kidney |
 | Warren manual pieces | Heart, Kidney, Liver, Lung |
+| eGPS survey v3 contours | Spleen, Pancreas |
 
-Warren UW, the eGPS survey, and eGPS SLAM are multi-organ slides. A slide-level mean would mix organs, and the piece names on those slides are the prototype calls plus the review that is still open for spleen and pancreas. They are not training labels. A reviewed piece can be added as a row in `data/extra_annotations.csv`.
+The single-organ slides and the ten Warren slides have no v2 or v3 contour, so those rows use the original segmentation. Where a later contour exists, the manifest points at it: eGPS spleen and pancreas use `spleen_pieces_uni_v1` and `pancreas_pieces_uni_v1` with the v3 geojson under `spleen_refined/contours` and `pancreas_refined/contours`. Warren kidney v2 and v3 files belong to other slides and are not labels in this model.
+
+The rest of the eGPS survey, Warren UW, and eGPS SLAM are multi-organ slides. A slide-level mean would mix organs. A reviewed piece can be added as a row in `data/extra_annotations.csv`.
 
 Pieces smaller than 200 patches are dropped on single-organ slides, so fragments are not used as that organ. Hand-labeled pieces are kept at any size.
 
@@ -67,31 +70,33 @@ The cross-validation is stratified by organ and grouped by mouse, so every piece
 
 ### Current fit
 
-Job `1693248` finished on 16 Oct 2026. It used 3,326 pieces from 1,576 slides and 11 organs. Mouse-grouped 5-fold cross-validation: balanced accuracy 0.989, macro F1 0.983. Twenty pieces were wrong. Adrenal is the least precise call (0.898): two liver pieces, two prostate pieces, and one lung piece were called adrenal, and every true adrenal was correct. Two hearts were called kidney and lung.
+Job `1703534` finished on 19 Oct 2026. It used 3,618 pieces from 1,669 slides and 13 organs. Mouse-grouped 5-fold cross-validation: balanced accuracy 0.986, macro F1 0.983. Twenty-six pieces were wrong. Every spleen was correct. Four other pieces were called spleen (two adrenal, two liver). Four pancreas pieces were called prostate, skin, or spleen, and nothing else was called pancreas.
 
 | Organ | Pieces | Mice | Precision | Recall |
 | --- | ---: | ---: | ---: | ---: |
 | Brain | 74 | 47 | 1.000 | 1.000 |
 | Heart | 55 | 28 | 1.000 | 0.964 |
-| Lung | 146 | 60 | 0.973 | 0.993 |
-| Liver | 2451 | 1190 | 1.000 | 0.996 |
-| Kidney | 169 | 89 | 0.982 | 0.988 |
-| Gut | 82 | 30 | 0.976 | 1.000 |
-| Adrenal | 44 | 26 | 0.898 | 1.000 |
-| Muscle | 78 | 18 | 0.975 | 0.987 |
+| Lung | 146 | 60 | 0.973 | 0.986 |
+| Liver | 2451 | 1190 | 0.999 | 0.997 |
+| Kidney | 169 | 89 | 0.976 | 0.982 |
+| Gut | 82 | 30 | 0.976 | 0.988 |
+| Adrenal | 44 | 26 | 0.933 | 0.955 |
+| Pancreas | 180 | 73 | 1.000 | 0.978 |
+| Spleen | 112 | 69 | 0.957 | 1.000 |
+| Muscle | 78 | 18 | 0.975 | 1.000 |
 | Skin | 49 | 21 | 0.980 | 1.000 |
-| Prostate | 107 | 21 | 0.971 | 0.953 |
+| Prostate | 107 | 21 | 0.972 | 0.963 |
 | Testis | 71 | 21 | 1.000 | 1.000 |
 
-These numbers are for single-organ slides and the 49 hand-labeled Warren pieces. They are not a test on mixed slides. A piece sitting next to other organs, or a piece with a large lesion, can still be wrong. Full table: `results/TRAINING_REPORT.md`.
+Spleen is 52 v3 eGPS pieces plus 60 Warren October pieces. Pancreas is 84 v3 eGPS pieces plus 96 Warren October pieces. The other organs are the same single-organ slides and 49 hand-labeled Warren pieces as before. This is not a test of unlabeled pieces on a mixed slide. A piece with a large lesion can still be wrong. Full table: `results/TRAINING_REPORT.md`.
 
-To add spleen and pancreas later, append rows to `data/extra_annotations.csv` and resubmit the same job. Columns:
+To add another reviewed piece, append a row to `data/extra_annotations.csv` and resubmit the same job. Columns:
 
 ```text
 slide_id,mouse_id,cohort,organ,feature_h5,contour_geojson,piece_id,source
 ```
 
-`feature_h5` is either one tissue's H5, or a slide H5 with `contour_geojson` set. `piece_id` can be left blank to use every contour in that file. `source` should be `extra`. Those rows are not filtered by the spleen/pancreas skip.
+`feature_h5` is either one tissue's H5, or a slide H5 with `contour_geojson` set. `piece_id` can be left blank to use every contour in that file. `source` should be `extra`. Point `contour_geojson` at the v3 file when that slide has one.
 
 ### 2. Inference
 

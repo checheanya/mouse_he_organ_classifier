@@ -1,13 +1,13 @@
 {
-  "n_pieces": 3326,
-  "n_slides": 1576,
-  "n_mice": 1239,
-  "n_organs": 11,
+  "n_pieces": 3618,
+  "n_slides": 1669,
+  "n_mice": 1296,
+  "n_organs": 13,
   "cv_splits": 5,
-  "balanced_accuracy": 0.989,
+  "balanced_accuracy": 0.986,
   "macro_f1": 0.983,
   "pooling": {
-    "piece": 3276,
+    "piece": 3568,
     "piece_h5": 49,
     "slide_mean": 1
   }

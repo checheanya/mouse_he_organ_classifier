@@ -5,6 +5,7 @@ Each example is the mean of the UNI v1 patch embeddings inside one tissue
 contour, with no tissue-color refinement. Evaluation is stratified by organ
 and grouped by mouse, so pieces from the same mouse stay in one fold.
 A GPU does not help.
+Classifier is a logistic regression model.
 """
 
 from __future__ import annotations
@@ -37,7 +38,14 @@ def _expand(record: dict) -> list[dict]:
     try:
         # Hand-labeled pieces are kept even when they are smaller than the
         # fragment cut used for single-organ slides.
-        minimum = 1 if record.get("source") in {"manual_piece", "extra"} else MIN_PATCHES
+        # Hand-labeled pieces are kept at any size. v3 contours use 150 so the
+        # smallest curated pancreas (190 patches) stays, and drawing crumbs do not.
+        if record.get("source") in {"manual_piece", "extra"}:
+            minimum = 1
+        elif record.get("source") == "v3_contour":
+            minimum = 150
+        else:
+            minimum = MIN_PATCHES
         pieces = piece_vectors(
             Path(record["feature_h5"]),
             Path(geo) if geo else None,
@@ -156,8 +164,9 @@ def _report(examples: pd.DataFrame, y: np.ndarray, pred: np.ndarray, splits: int
         "# Organ classifier training",
         "",
         "Unrefined UNI v1 segmentations. Each row is one tissue piece: the mean of",
-        "its patch embeddings, with no tissue-color cut. Spleen and pancreas are",
-        "not in this fit.",
+        "its patch embeddings, with no tissue-color cut. eGPS spleen and pancreas",
+        "use the v3 contours. The other organs use the original contour, because",
+        "those slides have no v2 or v3 segmentation.",
         "",
         f"- Pieces: {metrics['n_pieces']}",
         f"- Slides: {metrics['n_slides']}",
