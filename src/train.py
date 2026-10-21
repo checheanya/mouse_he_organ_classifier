@@ -189,7 +189,8 @@ def _report(examples: pd.DataFrame, y: np.ndarray, pred: np.ndarray, splits: int
     lines += [
         "",
         "The saved model is `model.joblib`. It was fit on every piece above, after",
-        "the cross-validation. Figures: `counts.svg`, `umap_organ.svg`, `confusion.svg`.",
+        "the cross-validation. Figures: `counts.svg`, `mice_by_sex.svg`, `umap_organ.svg`,",
+        "`confusion.svg`.",
         "",
     ]
     (out / "TRAINING_REPORT.md").write_text("\n".join(lines))
@@ -216,10 +217,14 @@ def main() -> None:
     examples["cv_predicted"] = pred
     examples.to_csv(args.out / "training_pieces.csv", index=False)
 
-    from plotting import plot_confusion, plot_counts, plot_umap
+    from plotting import attach_sex, plot_confusion, plot_counts, plot_mice_by_sex, plot_umap
 
+    examples = attach_sex(examples)
+    examples.to_csv(args.out / "training_pieces.csv", index=False)
     labels = _ordered(sorted(set(y)))
     plot_counts(examples["organ"].value_counts(), args.out / "counts.svg")
+    mice_table = plot_mice_by_sex(examples, args.out / "mice_by_sex.svg")
+    mice_table.to_csv(args.out / "mice_by_sex.csv", index=False)
     plot_confusion(confusion_matrix(y, pred, labels=labels), labels, args.out / "confusion.svg")
 
     import umap

@@ -63,6 +63,7 @@ The job builds `results/annotations.csv`, mean-pools every piece, and writes:
 - `results/training_pieces.csv` — one row per piece, with the cross-validated call
 - `results/per_organ_cv.csv` and `results/TRAINING_REPORT.md` — precision and recall by organ
 - `results/counts.svg` — number of pieces per organ
+- `results/mice_by_sex.svg` — unique mice per organ, stacked by sex (`unknown` when sex is missing)
 - `results/umap_organ.svg` — UMAP of the mean-pooled vectors, colored by organ
 - `results/confusion.svg` — mouse-grouped cross-validation
 
@@ -137,3 +138,5 @@ python src/infer.py \
 ```
 
 `--overlay-dir` writes an SVG per slide: the thumbnail, each contour, and the predicted organ with its confidence. The legend is beside the image. Overlays are written only when that slide has a thumbnail under `<trident-dir>/thumbnails/`, a contour file, and a row in `--wsi-csv` (`slide_id`, `wsi_path`) so the contour can be scaled to the thumbnail. Without those, the CSV is still written.
+
+The JAX ITP canagliflozin slides are scored with `src/score_jax_itp_canagliflozin.py`. Three poor slides and one bubbled piece on `UT12343_3` are left out. The calls and overlays go to `embeddings_uni/jax_itp_canagliflozin/organ_calls/`, next to the UNI features. They are not written under this project's `results/`.
